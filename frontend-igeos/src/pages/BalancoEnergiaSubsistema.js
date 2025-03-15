@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import api from "../service/api";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TablePagination, Paper, Typography, TextField, MenuItem, Collapse, Button, Box
+  TablePagination, Paper, Typography, TextField, MenuItem, Collapse, Button, Box, 
+  Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress
 } from "@mui/material";
+import { CloudUpload, Add } from "@mui/icons-material";
 import { ArrowUpward, ArrowDownward, FilterList } from "@mui/icons-material";
 
 const BalancoEnergiaSubsistema = () => {
@@ -25,6 +27,80 @@ const BalancoEnergiaSubsistema = () => {
   const [openFilters, setOpenFilters] = useState(false);
   const [showBelowDemand, setShowBelowDemand] = useState(false);
 
+  const [openCSVModal, setOpenCSVModal] = useState(false);
+  const [openManualModal, setOpenManualModal] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [manualData, setManualData] = useState({
+    ano: "",
+    mes: "",
+    subsistema: "",
+    geracaoEolicaVerificada: "",
+    geracaoFotovoltaicaVerificada: "",
+    usinaHidraulicaVerificada: "",
+    geracaoPequenaUsinaHidraulicaVerificada: "",
+    geracaoUsinaTermicaVerificada: "",
+    geracaoPequenaUsinaTermicaVerificada: "",
+    valorDemanda: "",
+  });
+
+  const [isLoading, setIsLoading] = useState(false); 
+  
+
+  const handleCSVUpload = (event) => {
+    setCsvFile(event.target.files[0]);
+  };
+
+  const handleManualInputChange = (event) => {
+    const { name, value } = event.target;
+    setManualData({ ...manualData, [name]: value });
+  };
+
+  //Adicionar via csv
+  const handleCSVSubmit = async () => {
+    if (!csvFile) {
+      alert("Por favor, selecione um arquivo CSV.");
+      return;
+    }
+    
+    setIsLoading(true); 
+    const formData = new FormData();
+    formData.append("file", csvFile);
+  
+    try {
+      const response = await api.post("/balanco-energia-subsistema/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert(response.data);
+      setOpenCSVModal(false);
+  
+      const updatedData = await api.get("/balanco-energia-subsistema");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao enviar arquivo CSV:", error);
+      alert("Erro ao enviar arquivo CSV. Verifique o console para mais detalhes.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  //Adicionar via Manual
+  const handleManualSubmit = async () => {
+    try {
+      await api.post("/balanco-energia-subsistema", manualData);
+      alert("Dados inseridos com sucesso!");
+      setOpenManualModal(false);
+      const updatedData = await api.get("/balanco-energia-subsistema");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao inserir dados manualmente:", error);
+    }
+  };
+
+  //Obter todos os dados
   useEffect(() => {
     api.get("/balanco-energia-subsistema")
       .then(response => {
@@ -95,6 +171,8 @@ const BalancoEnergiaSubsistema = () => {
     setFilteredData(showBelowDemand ? dados : newFilteredData);
   };
 
+  //Organizar por maiores deficits 
+
   const sortedData = [...filteredData].sort((a, b) => {
     if (orderBy === 'deficit') {
       const deficitA = calcularDeficit(a);
@@ -136,11 +214,13 @@ const BalancoEnergiaSubsistema = () => {
           Balanço da Geração de Energia por Subsistema
         </Typography>
 
+      {/* Botões */}
         <Box sx={{ 
           display: 'flex', 
           gap: 1, 
           flexWrap: 'wrap',
-          justifyContent: 'flex-end'
+          justifyContent: 'flex-end',
+          flexGrow: 1
         }}>
           <Button
             variant="outlined"
@@ -162,16 +242,142 @@ const BalancoEnergiaSubsistema = () => {
           </Button>
 
           <Button
-            variant="outlined"
+            variant="contained"
             color={showBelowDemand ? "primary" : "secondary"}
             onClick={handleToggleShowBelowDemand}
             sx={{ minWidth: 220 }}
           >
-            {showBelowDemand ? "Mostrar Todos" : "Mostrar Abaixo da Demanda"}
+            {showBelowDemand ? "Exibir Tudo" : "Exibir Deficits"}
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CloudUpload />}
+            onClick={() => setOpenCSVModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Upload CSV
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={() => setOpenManualModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Inserir Dados
           </Button>
         </Box>
       </Box>
+      {/* Dialog de Upload */}
 
+      <Dialog open={openCSVModal} onClose={() => setOpenCSVModal(false)}>
+        <DialogTitle>Upload de Arquivo CSV</DialogTitle>
+        <DialogContent>
+          <input type="file" accept=".csv" onChange={handleCSVUpload} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCSVModal(false)}>Cancelar</Button>
+          <Button onClick={handleCSVSubmit} color="primary" disabled={isLoading}>
+            {isLoading ? <CircularProgress size={24} /> : "Enviar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Manual */}
+      <Dialog open={openManualModal} onClose={() => setOpenManualModal(false)}>
+        <DialogTitle>Inserir Dados Manualmente</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Ano"
+            name="ano"
+            value={manualData.ano}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Mês"
+            name="mes"
+            value={manualData.mes}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Subsistema"
+            name="subsistema"
+            value={manualData.subsistema}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Geração Eólica"
+            name="geracaoEolicaVerificada"
+            value={manualData.geracaoEolicaVerificada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Geração Fotovoltaica"
+            name="geracaoFotovoltaicaVerificada"
+            value={manualData.geracaoFotovoltaicaVerificada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Usina Hidráulica"
+            name="usinaHidraulicaVerificada"
+            value={manualData.usinaHidraulicaVerificada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="P. Usina Hidráulica"
+            name="geracaoPequenaUsinaHidraulicaVerificada"
+            value={manualData.geracaoPequenaUsinaHidraulicaVerificada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Geração Térmica"
+            name="geracaoUsinaTermicaVerificada"
+            value={manualData.geracaoUsinaTermicaVerificada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="P. Usina Térmica"
+            name="geracaoPequenaUsinaTermicaVerificada"
+            value={manualData.geracaoPequenaUsinaTermicaVerificada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Valor da Demanda"
+            name="valorDemanda"
+            value={manualData.valorDemanda}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenManualModal(false)}>Cancelar</Button>
+          <Button onClick={handleManualSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Exibição dos filtros */}
       <Collapse in={openFilters}>
         <Box sx={{ 
           display: "grid", 
@@ -232,7 +438,7 @@ const BalancoEnergiaSubsistema = () => {
           </TextField>
         </Box>
       </Collapse>
-
+      {/* Tabela */}
       <TableContainer>
         <Table>
           <TableHead>

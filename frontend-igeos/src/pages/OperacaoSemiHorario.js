@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import api from "../service/api";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TablePagination, Paper, Typography, Button, TextField, Collapse, MenuItem, Box
+  TablePagination, Paper, Typography, Button, TextField, Collapse, MenuItem, Box,
+  Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress
 } from "@mui/material";
-import { ArrowUpward, ArrowDownward, FilterList } from "@mui/icons-material";
+import { ArrowUpward, ArrowDownward, FilterList, CloudUpload, Add } from "@mui/icons-material";
 import { Line } from 'react-chartjs-2';
 import 'chart.js/auto';
 import { Chart, LinearScale, CategoryScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
@@ -32,6 +33,21 @@ const OperacaoSemiHorario = () => {
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSubsistema, setSelectedSubsistema] = useState("");
 
+  const [openCSVModal, setOpenCSVModal] = useState(false);
+  const [openManualModal, setOpenManualModal] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [manualData, setManualData] = useState({
+    data: "",
+    ano: "",
+    mes: "",
+    hora: "",
+    idSubSistema: "",
+    subSistema: "",
+    custoMarginalOperacao: ""
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  //Buscar Dados
   useEffect(() => {
     api.get("/operacao-semi-horario")
       .then(response => {
@@ -40,6 +56,62 @@ const OperacaoSemiHorario = () => {
       })
       .catch(error => console.error("Erro ao buscar dados:", error));
   }, []);
+
+  const handleCSVUpload = (event) => {
+    setCsvFile(event.target.files[0]);
+  };
+
+  const handleManualInputChange = (event) => {
+    const { name, value } = event.target;
+    setManualData({ ...manualData, [name]: value });
+  };
+
+  //Adicionar Via csv
+  const handleCSVSubmit = async () => {
+    if (!csvFile) {
+      alert("Por favor, selecione um arquivo CSV.");
+      return;
+    }
+
+    setIsLoading(true); 
+
+    const formData = new FormData();
+    formData.append("file", csvFile);
+
+    try {
+      const response = await api.post("/operacao-semi-horario/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert(response.data);
+      setOpenCSVModal(false);
+
+      const updatedData = await api.get("/operacao-semi-horario");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao enviar arquivo CSV:", error);
+      alert("Erro ao enviar arquivo CSV. Verifique o console para mais detalhes.");
+    } finally {
+      setIsLoading(false); 
+    }
+  };
+
+  //Adicionar via Manual
+  const handleManualSubmit = async () => {
+    try {
+      await api.post("/operacao-semi-horario", manualData);
+      alert("Dados inseridos com sucesso!");
+      setOpenManualModal(false);
+
+      const updatedData = await api.get("/operacao-semi-horario");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao inserir dados manualmente:", error);
+    }
+  };
 
   const handleSort = (column) => {
     const isAsc = orderBy === column && order === "asc";
@@ -82,6 +154,7 @@ const OperacaoSemiHorario = () => {
     setPage(0);
   };
 
+  //Ordenar dados com forme a hora 
   const sortedData = [...filteredData].sort((a, b) => {
     if (orderBy === 'hora') {
       const [horaA, minA] = a.hora.split(':').map(Number);
@@ -101,6 +174,7 @@ const OperacaoSemiHorario = () => {
     setPage(0);
   };
 
+  //Agrupar data por hora e subsistema
   const groupDataByDayAndSubsistema = () => {
     const grouped = {};
 
@@ -130,6 +204,7 @@ const OperacaoSemiHorario = () => {
     return grouped;
   };
 
+  //Exibição do grafico com base no dia e no subsistema
   const getChartData = () => {
     const grouped = groupDataByDayAndSubsistema();
     const key = `${selectedDay}-${selectedSubsistema}`;
@@ -223,13 +298,14 @@ const OperacaoSemiHorario = () => {
         }}>
           Operação Semi-Horária
         </Typography>
-
+        
         <Box sx={{
           display: 'flex',
           gap: 1,
           flexWrap: 'wrap',
           justifyContent: 'flex-end'
         }}>
+          {/* Botoes */}
           <Button
             variant="outlined"
             color="primary"
@@ -257,8 +333,115 @@ const OperacaoSemiHorario = () => {
           >
             {showGraph ? "Mostrar Tabela" : "Mostrar Gráfico"}
           </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CloudUpload />}
+            onClick={() => setOpenCSVModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Upload CSV
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={() => setOpenManualModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Inserir Dados
+          </Button>
         </Box>
       </Box>
+      {/* Dialog de Upload */}
+      <Dialog open={openCSVModal} onClose={() => setOpenCSVModal(false)}>
+        <DialogTitle>Upload de Arquivo CSV</DialogTitle>
+        <DialogContent>
+          <input type="file" accept=".csv" onChange={handleCSVUpload} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCSVModal(false)}>Cancelar</Button>
+          <Button onClick={handleCSVSubmit} color="primary" disabled={isLoading}>
+            {isLoading ? <CircularProgress size={24} /> : "Enviar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Adição Manual */}
+      <Dialog open={openManualModal} onClose={() => setOpenManualModal(false)}>
+        <DialogTitle>Inserir Dados Manualmente</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Data"
+            name="data"
+            type="date"
+            value={manualData.data}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="Ano"
+            name="ano"
+            value={manualData.ano}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Mês"
+            name="mes"
+            value={manualData.mes}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Hora"
+            name="hora"
+            value={manualData.hora}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="ID Subsistema"
+            name="idSubSistema"
+            value={manualData.idSubSistema}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Subsistema"
+            name="subSistema"
+            value={manualData.subSistema}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Custo Marginal"
+            name="custoMarginalOperacao"
+            value={manualData.custoMarginalOperacao}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            type="number"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenManualModal(false)}>Cancelar</Button>
+          <Button onClick={handleManualSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Filtros*/}
 
       <Collapse in={openFilters}>
         <Box sx={{
@@ -349,6 +532,8 @@ const OperacaoSemiHorario = () => {
               ))}
           </TextField>
         </Box>
+
+        {/* Exibição do grafico*/}
       </Collapse>
 
       <Box sx={{
@@ -415,6 +600,7 @@ const OperacaoSemiHorario = () => {
           </Box>
         </Collapse>
 
+      {/* Tabela */}
         <Collapse in={!showGraph}>
           <Box sx={{
             maxWidth: '100%',

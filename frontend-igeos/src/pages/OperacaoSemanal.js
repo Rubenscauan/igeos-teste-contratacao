@@ -2,9 +2,10 @@ import React, { useEffect, useState, useMemo } from "react";
 import api from "../service/api";
 import {
   Table, TableBody, TableCell, TableContainer, TableRow,
-  TablePagination, Paper, Typography, TextField, MenuItem, Collapse, Button, Box
+  TablePagination, Paper, Typography, TextField, MenuItem, Collapse, Button, Box,
+  Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress
 } from "@mui/material";
-import { FilterList } from "@mui/icons-material";
+import { FilterList, CloudUpload, Add } from "@mui/icons-material";
 
 const OperacaoSemanal = () => {
   const [dados, setDados] = useState([]);
@@ -20,6 +21,24 @@ const OperacaoSemanal = () => {
     custoMarginalMinimo: ""
   });
 
+  const [openCSVModal, setOpenCSVModal] = useState(false);
+  const [openManualModal, setOpenManualModal] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [manualData, setManualData] = useState({
+    data: "",
+    ano: "",
+    mes: "",
+    subSistema: "",
+    custoMarginalOperacaoSemanalCargaPesada: "",
+    custoMarginalOperacaoSemanalCargaMedia: "",
+    custoMarginalOperacaoSemanalCargaLeve: "",
+    custoMarginalOperacaoSemanal: ""
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  //Agrupar os dados para exibir os do mesmo dia
   const dadosAgrupados = useMemo(() => {
     return filteredData.reduce((acc, item) => {
       const dataKey = item.data;
@@ -31,6 +50,7 @@ const OperacaoSemanal = () => {
     }, {});
   }, [filteredData]);
 
+  //Buscar dados
   useEffect(() => {
     api.get("/operacao-semanal")
       .then(response => {
@@ -40,6 +60,61 @@ const OperacaoSemanal = () => {
       })
       .catch(error => console.error("Erro ao buscar dados:", error));
   }, []);
+
+  const handleCSVUpload = (event) => {
+    setCsvFile(event.target.files[0]);
+  };
+
+  const handleManualInputChange = (event) => {
+    const { name, value } = event.target;
+    setManualData({ ...manualData, [name]: value });
+  };
+
+  //Adicionar via csv
+  const handleCSVSubmit = async () => {
+    if (!csvFile) {
+      alert("Por favor, selecione um arquivo CSV.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const formData = new FormData();
+    formData.append("file", csvFile);
+
+    try {
+      const response = await api.post("/operacao-semanal/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert(response.data);
+      setOpenCSVModal(false);
+
+      const updatedData = await api.get("/operacao-semanal");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao enviar arquivo CSV:", error);
+      alert("Erro ao enviar arquivo CSV. Verifique o console para mais detalhes.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  //Adicionar Manual
+  const handleManualSubmit = async () => {
+    try {
+      await api.post("/operacao-semanal", manualData);
+      alert("Dados inseridos com sucesso!");
+      setOpenManualModal(false);
+      const updatedData = await api.get("/operacao-semanal");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao inserir dados manualmente:", error);
+    }
+  };
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
@@ -109,12 +184,13 @@ const OperacaoSemanal = () => {
         }}>
           Operação Semanal
         </Typography>
-
+        {/* Botões */}
         <Box sx={{
           display: 'flex',
           gap: 1,
           flexWrap: 'wrap',
-          justifyContent: 'flex-end'
+          justifyContent: 'flex-end',
+          flexGrow: 1
         }}>
           <Button
             variant="outlined"
@@ -134,9 +210,124 @@ const OperacaoSemanal = () => {
           >
             Limpar Filtros
           </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CloudUpload />}
+            onClick={() => setOpenCSVModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Upload CSV
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={() => setOpenManualModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Inserir Manualmente
+          </Button>
         </Box>
       </Box>
-
+      {/* Dialog de Upload */}
+      <Dialog open={openCSVModal} onClose={() => setOpenCSVModal(false)}>
+        <DialogTitle>Upload de Arquivo CSV</DialogTitle>
+        <DialogContent>
+          <input type="file" accept=".csv" onChange={handleCSVUpload} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCSVModal(false)}>Cancelar</Button>
+          <Button onClick={handleCSVSubmit} color="primary" disabled={isLoading}>
+            {isLoading ? <CircularProgress size={24} /> : "Enviar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog adição manual */}
+      <Dialog open={openManualModal} onClose={() => setOpenManualModal(false)}>
+        <DialogTitle>Inserir Dados Manualmente</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Data"
+            name="data"
+            type="date"
+            value={manualData.data}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="Ano"
+            name="ano"
+            value={manualData.ano}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Mês"
+            name="mes"
+            value={manualData.mes}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Subsistema"
+            name="subSistema"
+            value={manualData.subSistema}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Custo Marginal Carga Pesada"
+            name="custoMarginalOperacaoSemanalCargaPesada"
+            value={manualData.custoMarginalOperacaoSemanalCargaPesada}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            type="number"
+          />
+          <TextField
+            label="Custo Marginal Carga Média"
+            name="custoMarginalOperacaoSemanalCargaMedia"
+            value={manualData.custoMarginalOperacaoSemanalCargaMedia}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            type="number"
+          />
+          <TextField
+            label="Custo Marginal Carga Leve"
+            name="custoMarginalOperacaoSemanalCargaLeve"
+            value={manualData.custoMarginalOperacaoSemanalCargaLeve}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            type="number"
+          />
+          <TextField
+            label="Custo Marginal"
+            name="custoMarginalOperacaoSemanal"
+            value={manualData.custoMarginalOperacaoSemanal}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            type="number"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenManualModal(false)}>Cancelar</Button>
+          <Button onClick={handleManualSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Filtros */}
       <Collapse in={openFilters}>
         <Box sx={{
           display: "grid",
@@ -223,6 +414,7 @@ const OperacaoSemanal = () => {
         </Box>
       </Collapse>
 
+      {/* Tabela */}
       <TableContainer component={Paper} sx={{ marginTop: 2 }}>
         <Table>
           <TableBody>
@@ -266,6 +458,7 @@ const OperacaoSemanal = () => {
         count={Object.values(dadosAgrupados).length}
         page={page}
         rowsPerPage={rowsPerPage}
+        labelRowsPerPage="Linhas por página:"
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />

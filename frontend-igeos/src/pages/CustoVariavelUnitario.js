@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import api from "../service/api";
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TablePagination, Paper, Typography, TextField, MenuItem, Collapse, Button, Box
+  TablePagination, Paper, Typography, TextField, MenuItem, Collapse, Button, Box,
+  Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress
 } from "@mui/material";
-import { ArrowUpward, ArrowDownward, FilterList } from "@mui/icons-material";
+import { ArrowUpward, ArrowDownward, FilterList, CloudUpload, Add } from "@mui/icons-material";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const CustoVariavelUnitario = () => {
@@ -31,6 +32,26 @@ const CustoVariavelUnitario = () => {
   const [openFilters, setOpenFilters] = useState(false);
   const [handleGraphView, setHandleGraphView] = useState(false);
 
+  const [openCSVModal, setOpenCSVModal] = useState(false);
+  const [openManualModal, setOpenManualModal] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [manualData, setManualData] = useState({
+    dataInicio: "",
+    dataFim: "",
+    ano: "",
+    mes: "",
+    numeroRevisao: "",
+    semanaOperativa: "",
+    idModeloUsina: "",
+    idSubSistema: "",
+    subSistema: "",
+    usina: "",
+    custoVariavelUnitario: ""
+  });
+
+  const [isLoading, setIsLoading] = useState(false); 
+
+  //Importação dos dados
   useEffect(() => {
     api.get("custo-variavel")
       .then(response => {
@@ -39,6 +60,62 @@ const CustoVariavelUnitario = () => {
       })
       .catch(error => console.error("Erro ao buscar dados:", error));
   }, []);
+
+  const handleCSVUpload = (event) => {
+    setCsvFile(event.target.files[0]);
+  };
+
+  const handleManualInputChange = (event) => {
+    const { name, value } = event.target;
+    setManualData({ ...manualData, [name]: value });
+  };
+
+  //Adicionar via csv
+  const handleCSVSubmit = async () => {
+    if (!csvFile) {
+      alert("Por favor, selecione um arquivo CSV.");
+      return;
+    }
+
+    setIsLoading(true); 
+
+    const formData = new FormData();
+    formData.append("file", csvFile);
+
+    try {
+      const response = await api.post("/custo-variavel/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert(response.data);
+      setOpenCSVModal(false);
+
+      const updatedData = await api.get("/custo-variavel");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao enviar arquivo CSV:", error);
+      alert("Erro ao enviar arquivo CSV. Verifique o console para mais detalhes.");
+    } finally {
+      setIsLoading(false); 
+    }
+  };
+
+  //Adicionar via manual
+  const handleManualSubmit = async () => {
+    try {
+      await api.post("/custo-variavel", manualData);
+      alert("Dados inseridos com sucesso!");
+      setOpenManualModal(false);
+
+      const updatedData = await api.get("/custo-variavel");
+      setDados(updatedData.data);
+      setFilteredData(updatedData.data);
+    } catch (error) {
+      console.error("Erro ao inserir dados manualmente:", error);
+    }
+  };
 
   const handleSort = (column) => {
     const isAsc = orderBy === column && order === "asc";
@@ -51,6 +128,7 @@ const CustoVariavelUnitario = () => {
     const newFiltros = { ...filtros, [name]: value };
     setFiltros(newFiltros);
 
+    //Filtros
     const newFilteredData = dados.filter((item) => {
       return (
         (!newFiltros.ano || item.ano === newFiltros.ano) &&
@@ -83,12 +161,7 @@ const CustoVariavelUnitario = () => {
     setPage(0);
   };
 
-  const sortedData = [...filteredData].sort((a, b) => {
-    if (a[orderBy] < b[orderBy]) return order === "asc" ? -1 : 1;
-    if (a[orderBy] > b[orderBy]) return order === "asc" ? 1 : -1;
-    return 0;
-  });
-
+  //Buscar o CV de cada usina com base no dia
   const getCVUFromUsina = (usina) => {
     const cvus = dados.filter(item => item.usina === usina);
 
@@ -113,6 +186,12 @@ const CustoVariavelUnitario = () => {
     setPage(0);
   };
 
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (a[orderBy] < b[orderBy]) return order === "asc" ? -1 : 1;
+    if (a[orderBy] > b[orderBy]) return order === "asc" ? 1 : -1;
+    return 0;
+  });
+  
   return (
     <Paper sx={{
       width: "95%",
@@ -135,7 +214,7 @@ const CustoVariavelUnitario = () => {
         }}>
           Custo Variável Unitário
         </Typography>
-
+      {/* Botoes */}
         <Box sx={{
           display: 'flex',
           gap: 1,
@@ -169,9 +248,151 @@ const CustoVariavelUnitario = () => {
           >
             Limpar Filtros
           </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<CloudUpload />}
+            onClick={() => setOpenCSVModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Upload CSV
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={() => setOpenManualModal(true)}
+            sx={{ minWidth: 180 }}
+          >
+            Inserir Dados
+          </Button>
         </Box>
       </Box>
 
+      {/* Dialog de Upload */}
+      <Dialog open={openCSVModal} onClose={() => setOpenCSVModal(false)}>
+        <DialogTitle>Upload de Arquivo CSV</DialogTitle>
+        <DialogContent>
+          <input type="file" accept=".csv" onChange={handleCSVUpload} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCSVModal(false)}>Cancelar</Button>
+          <Button onClick={handleCSVSubmit} color="primary" disabled={isLoading}>
+            {isLoading ? <CircularProgress size={24} /> : "Enviar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog Manual */}
+      <Dialog open={openManualModal} onClose={() => setOpenManualModal(false)}>
+        <DialogTitle>Inserir Dados Manualmente</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Data Início"
+            name="dataInicio"
+            type="date"
+            value={manualData.dataInicio}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="Data Fim"
+            name="dataFim"
+            type="date"
+            value={manualData.dataFim}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="Ano"
+            name="ano"
+            value={manualData.ano}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Mês"
+            name="mes"
+            value={manualData.mes}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Número Revisão"
+            name="numeroRevisao"
+            value={manualData.numeroRevisao}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Semana Operativa"
+            name="semanaOperativa"
+            value={manualData.semanaOperativa}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="ID Modelo Usina"
+            name="idModeloUsina"
+            value={manualData.idModeloUsina}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="ID Subsistema"
+            name="idSubSistema"
+            value={manualData.idSubSistema}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Subsistema"
+            name="subSistema"
+            value={manualData.subSistema}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Usina"
+            name="usina"
+            value={manualData.usina}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Custo Variável Unitário"
+            name="custoVariavelUnitario"
+            value={manualData.custoVariavelUnitario}
+            onChange={handleManualInputChange}
+            fullWidth
+            margin="normal"
+            type="number"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenManualModal(false)}>Cancelar</Button>
+          <Button onClick={handleManualSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Exibir o grafico */}
       <Collapse in={handleGraphView}>
         <Box sx={{
           display: 'flex',
@@ -237,6 +458,7 @@ const CustoVariavelUnitario = () => {
           </Box>
         </Box>
       </Collapse>
+      {/* Filtros */}
       <Collapse in={openFilters}>
         <Box sx={{
           display: "grid",
@@ -373,7 +595,7 @@ const CustoVariavelUnitario = () => {
           />
         </Box>
       </Collapse>
-
+      {/* Tabela */}
       <Box sx={{
         position: 'relative',
         minHeight: 400,
@@ -450,6 +672,7 @@ const CustoVariavelUnitario = () => {
               count={filteredData.length}
               page={page}
               rowsPerPage={rowsPerPage}
+              labelRowsPerPage="Linhas por página:"
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
               sx={{

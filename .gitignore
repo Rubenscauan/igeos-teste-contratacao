@@ -1,2 +1,3 @@
 target/
-frontend-igeos\node_modules   
+frontend-igeos/node_modules/
+frontend-igeos/.cache/
