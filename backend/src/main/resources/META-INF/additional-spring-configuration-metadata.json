@@ -1,0 +1,22 @@
+{"properties": [
+  {
+    "name": "spring.rest.read-timeout",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.rest.read-timeout'"
+  },
+  {
+    "name": "spring.rest.connection-timeout",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.rest.connection-timeout'"
+  },
+  {
+    "name": "spring.webclient.connect-timeout",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.webclient.connect-timeout'"
+  },
+  {
+    "name": "spring.webclient.response-timeout",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.webclient.response-timeout'"
+  }
+]}

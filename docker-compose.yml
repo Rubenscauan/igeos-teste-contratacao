@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   postgres:
     image: "postgres:16-alpine"
@@ -5,3 +7,22 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: "pgpass"
+
+  backend:
+    build: ./backend  # Caminho para o diretório do backend
+    ports:
+      - "8080:8080"  # Mapeia a porta do backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: pgpass
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      - postgres  # Garante que o postgres inicie antes do backend
+
+  frontend:
+    build: ./frontend-igeos  # Caminho para o diretório do frontend
+    ports:
+      - "3000:3000"  # Mapeia a porta do frontend
+    depends_on:
+      - backend  # Garante que o backend inicie antes do frontend
