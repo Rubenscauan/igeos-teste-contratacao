@@ -29,13 +29,19 @@ Este repositório contém um sistema de análise energética da **ONS**, uma pla
 git clone https://github.com/Rubenscauan/igeos-teste-contratacao
 ```
 
-### 2. Rodar o projeto com docker
+### 2. Ir para pasta do projeto
+
+```bash
+cd igeos-teste-contratacao
+```
+
+### 3. Rodar o projeto com docker
 
 ```bash
 docker-compose up --build
 ```
 
-### 3. O sistema roda em
+### 4. O sistema roda em
 
 * **Frontend (localhost:3000)**
 * **Backend (localhost:8080)**
