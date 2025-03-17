@@ -100,7 +100,7 @@ Inicialmente Exibimos a tabela que recuperamos do BackEnd, contendo filtros basi
 
 O principal componente de exibição dela é a possibilidade de podermos ver os subsistemas que estão que abaixo do valor de demanda e os que estão acima (deficit e superavit), marcando em vermelho e verde. Além também de um botão para filtrarmos e vermos somente os subsistemas que estão em deficit.
 
-![Descrição da imagem](image/readme/TabelaBalanceamentoSubsistema.png "Tabela Subsistema")
+![Descrição da imagem](image/readme/TabelaBalanceamentoSubsistema.PNG "Tabela Subsistema")
 
 ### Operação Semi Horario
 
@@ -108,7 +108,7 @@ Inicialmente Exibimos a tabela que recuperamos do BackEnd, contendo filtros basi
 
 Também temos a opção de fazer uma exibição em grafico, que nos mostra uma linha do tempo com os custos ao longo do dia, com base nos horarios que estão na tabela (a cada 30 minutos).
 
-![Descrição da imagem](image/readme/GraficoOperacaoSemiHorario.png "Tabela Subsistema")
+![Descrição da imagem](image/readme/GraficoOperacaoSemiHorario.PNG "Tabela Subsistema")
 
 ## Contato
 
