@@ -86,13 +86,13 @@ Inicialmente Exibimos a tabela que recuperamos do BackEnd, contendo filtros basi
 
 O usuario também tem a opção de exibir um grafico. O gráfico contém informações relacionadas a o dia da revisão e o custo variavel no dia em especifico naquela revisão.
 
-![Descrição da imagem](image\readme\Grafico.png "Gráfico de custo variavel unitario")
+![Descrição da imagem](image/readme/Grafico.png "Gráfico de custo variavel unitario")
 
 ### Operação Semanal
 
 Inicialmente Exibimos a tabela que recuperamos do BackEnd, contendo filtros basicos para a visualização porém com dados do mesmo dia agrupados, ja que o padrão se mantém como por exemplo tendo uma atualização a cada dia dos 4 subsistemas. Os filtros são Ano, mês, data especifica, subsitema e os custos marginais, possuindo o de carga leve, media e pesada, essa tabela por mais que seja bem basica é uma exibição que ja permite a um usuario que entenda o que está acontecendo. Com essas informações:
 
-![Descrição da imagem](image\readme\TabelaOperacaoSemanal.png "Tabela Operação Semanal")
+![Descrição da imagem](image/readme/TabelaOperacaoSemanal.png "Tabela Operação Semanal")
 
 ### Balanço de Energia (Dessem)
 
@@ -100,7 +100,7 @@ Inicialmente Exibimos a tabela que recuperamos do BackEnd, contendo filtros basi
 
 O principal componente de exibição dela é a possibilidade de podermos ver os subsistemas que estão que abaixo do valor de demanda e os que estão acima (deficit e superavit), marcando em vermelho e verde. Além também de um botão para filtrarmos e vermos somente os subsistemas que estão em deficit.
 
-![Descrição da imagem](image\readme\TabelaBalanceamentoSubsistema.png "Tabela Subsistema")
+![Descrição da imagem](image/readme/TabelaBalanceamentoSubsistema.png "Tabela Subsistema")
 
 ### Operação Semi Horario
 
@@ -108,7 +108,7 @@ Inicialmente Exibimos a tabela que recuperamos do BackEnd, contendo filtros basi
 
 Também temos a opção de fazer uma exibição em grafico, que nos mostra uma linha do tempo com os custos ao longo do dia, com base nos horarios que estão na tabela (a cada 30 minutos).
 
-![Descrição da imagem](image\readme\GraficoOperacaoSemiHorario.png "Tabela Subsistema")
+![Descrição da imagem](image/readme/GraficoOperacaoSemiHorario.png "Tabela Subsistema")
 
 ## Contato
 
